@@ -1,0 +1,6 @@
+{
+    "feature0": { "name": "someFature", "enabled": false, "ukonly": true },
+    "feature1": { "name": "thatOne", "enabled": true, "feature": { "name":"AnotherOne", "enabled": false } },
+    "feature2": { "other": 0 },
+    "feature3": [ "awesome", "awesome", { "name": "omiture" } ]
+}
