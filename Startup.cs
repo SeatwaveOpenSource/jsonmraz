@@ -25,7 +25,8 @@ namespace jsonmraz
                 path = context.Request.Path.Value.Split('/');
                 root = path[1];
 
-                if (string.IsNullOrWhiteSpace(root)) return;
+                if (string.IsNullOrWhiteSpace(root) || root.Contains("favicon")) return;
+
                 json = JsonConvert.DeserializeObject<dynamic>(File.ReadAllText($"json/{root}.json"));
 
                 await next();
@@ -38,8 +39,6 @@ namespace jsonmraz
             });
 
             app.Run(async context => {
-
-                if (string.IsNullOrWhiteSpace(root)) return;
 
                 foreach (var pathSection in path) {
                     if (string.IsNullOrWhiteSpace(pathSection) || pathSection == root) continue;
