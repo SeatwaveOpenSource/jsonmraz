@@ -6,3 +6,4 @@
 /jsonmraz.sln
 /.vs
 /bin/Debug/netcoreapp1.0
+*.TMP
