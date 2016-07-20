@@ -10,7 +10,6 @@ namespace jsonmraz
 {
     public class Startup
     {
-
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
         {
             loggerFactory.AddConsole();
@@ -25,7 +24,7 @@ namespace jsonmraz
                 path = context.Request.Path.Value.Split('/');
                 root = path[1];
 
-                if (string.IsNullOrWhiteSpace(root) || root.Contains("favicon")) return;
+                if (string.IsNullOrWhiteSpace(root) || root.Contains("favicon.ico")) return;
 
                 json = JsonConvert.DeserializeObject<dynamic>(File.ReadAllText($"json/{root}.json"));
 
@@ -53,9 +52,9 @@ namespace jsonmraz
 
         public static void Main(string[] args) => new WebHostBuilder()
             .UseKestrel()
-            .UseContentRoot(Directory.GetCurrentDirectory())
             .UseIISIntegration()
             .UseStartup<Startup>()
-            .Build().Run();
+            .Build()
+            .Run();
     }
 }
