@@ -16,6 +16,12 @@ namespace jsonmraz
 
             if (env.IsDevelopment()) { app.UseDeveloperExceptionPage(); }
 
+            app.Map("/set", _app => {
+                _app.Run(async context => {
+                    await context.Response.WriteAsync("set stuff");
+                });
+            });
+
             app.Run(async context => {
                 var path = context.Request.Path.Value.Split('/');
                 var root = path[1];
