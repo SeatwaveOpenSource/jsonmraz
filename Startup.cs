@@ -4,6 +4,7 @@ using System.Linq;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -70,6 +71,13 @@ namespace jsonmraz
         }
 
         public static void Main(string[] args) => new WebHostBuilder()
+            .UseConfiguration
+            (
+                new ConfigurationBuilder()
+                    .SetBasePath(Directory.GetCurrentDirectory())
+                    .AddJsonFile("hosting.json", optional: true)
+                    .Build()
+            )
             .UseKestrel()
             .UseIISIntegration()
             .UseStartup<Startup>()
