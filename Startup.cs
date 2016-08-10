@@ -27,7 +27,7 @@ namespace jsonmraz
                 path = context.Request.Path.Value.Split('/');
                 root = path[1];
                 if (string.IsNullOrWhiteSpace(root) || root.Contains("favicon.ico")) return;
-                json = JObject.Parse(File.ReadAllText($"json/{root}.json"));
+                json = JsonConvert.DeserializeObject(File.ReadAllText($"json/{root}.json"));
                 await next();
             });
 
