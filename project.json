@@ -40,7 +40,9 @@
   "publishOptions": {
     "include": [
       "wwwroot",
-      "web.config"
+      "web.config",
+      "json",
+      "hosting.json"
     ]
   },
 
