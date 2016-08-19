@@ -1,0 +1,10 @@
+{
+  "name": "something",
+  "releasedate": {
+    "big-endian": "2005-07-26",
+    "middle-endian": "07-26-2005",
+    "little-endian": "26-07-2005"
+  },
+  "label": "Atlantic Records",
+  "songs": [ "Life Is Wonderful", "Wordplay", "Geek in the Pink", "Did You Get My Message?", "Mr. Curiosity", "Clockwatching", "Bella Luna", "Plane", "O. Lover", "Please Don't Tell Her", "The Forecast", "Song for a Friend" ]
+}

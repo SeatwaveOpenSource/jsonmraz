@@ -13,6 +13,8 @@ namespace jsonmraz
 {
     public class Startup
     {
+        private static IConfigurationRoot Configuration { get; set; }
+
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
         {
             loggerFactory.AddConsole();
@@ -21,28 +23,31 @@ namespace jsonmraz
 
             string[] path = { };
             string root = null;
-            dynamic json = null;
+            dynamic _JSON_ = null;
 
-            app.Use(async (context, next) => {
+            app.Use(async (context, next) =>
+            {
                 path = context.Request.Path.Value.Split('/');
                 root = path[1];
                 if (string.IsNullOrWhiteSpace(root) || root.Contains("favicon.ico")) return;
-                json = JsonConvert.DeserializeObject(File.ReadAllText($"json/{root}.json"));
+                _JSON_ = JsonConvert.DeserializeObject(File.ReadAllText($"json/{root}.json"));
                 await next();
             });
 
-            app.MapWhen(context => context.Request.QueryString.Value.Contains("set"), _app => {
-                _app.Run(async context => {
-                    dynamic _json = findJsonObject(json, path, root);
+            app.MapWhen(context => context.Request.QueryString.Value.Contains("set"), _app =>
+            {
+                _app.Run(async context =>
+                {
+                    dynamic _json = findJsonObject(_JSON_, path, root);
 
-                    var propertyName = context.Request.Query.Single(x => x.Key == "set").Value[0];
-                    var propertyValue = context.Request.Query.Single(x => x.Key == "value").Value[0];
+                    var propertyName = context.Request.Query.Single(x => x.Key == "key").Value[0];
+                    var propertyValue = context.Request.Query.Single(x => x.Key == "newValue").Value[0];
 
-                    var type = json.SelectToken($"{(_json as JObject)?.Path}")[propertyName].Value.GetType();
+                    var type = _JSON_.SelectToken($"{(_json as JObject)?.Path}")[propertyName].Value.GetType();
 
-                    json.SelectToken($"{(_json as JObject)?.Path}")[propertyName] = Convert.ChangeType(propertyValue, type);
+                    _JSON_.SelectToken($"{(_json as JObject)?.Path}")[propertyName] = Convert.ChangeType(propertyValue, type);
 
-                    var jsonOutput = JsonConvert.SerializeObject(json);
+                    var jsonOutput = JsonConvert.SerializeObject(_JSON_);
 
                     File.WriteAllText($"json/{root}.json", jsonOutput);
 
@@ -50,8 +55,9 @@ namespace jsonmraz
                 });
             });
 
-            app.Run(async context => {
-                var jsonObj = findJsonObject(json, path, root);
+            app.Run(async context =>
+            {
+                var jsonObj = findJsonObject(_JSON_, path, root);
                 await context.Response.WriteAsync($"{JsonConvert.SerializeObject(jsonObj)}");
             });
         }
@@ -59,29 +65,32 @@ namespace jsonmraz
         static dynamic findJsonObject(dynamic json, string[] path, string root)
         {
             var _json = json;
-            foreach (var pathSection in path) {
-
+            foreach (var pathSection in path)
+            {
                 if (string.IsNullOrWhiteSpace(pathSection) || pathSection == root) continue;
-                foreach (var jsonObj in _json) {
-                    if (jsonObj.Name != pathSection) continue;
-                    _json = jsonObj.Value;
+                foreach (var jsonObj in _json)
+                {
+                    if (jsonObj.Name != pathSection && (jsonObj as JObject)?.Path != $"[{pathSection}]") continue;
+                    _json = jsonObj.Value ?? jsonObj;
                 }
             }
             return _json;
         }
 
-        public static void Main(string[] args) => new WebHostBuilder()
-            .UseConfiguration
-            (
-                new ConfigurationBuilder()
-                    .SetBasePath(Directory.GetCurrentDirectory())
-                    .AddJsonFile("hosting.json", optional: true)
-                    .Build()
-            )
-            .UseKestrel()
-            .UseIISIntegration()
-            .UseStartup<Startup>()
-            .Build()
-            .Run();
+        public static void Main(string[] args)
+        {
+            Configuration = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("config.json", optional: true)
+                .Build();
+
+            new WebHostBuilder()
+                .UseKestrel()
+                .UseConfiguration(Configuration.GetSection("server.urls"))
+                .UseIISIntegration()
+                .UseStartup<Startup>()
+                .Build()
+                .Run();
+        }
     }
 }
