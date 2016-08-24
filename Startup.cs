@@ -1,10 +1,12 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -14,6 +16,11 @@ namespace jsonmraz
     public class Startup
     {
         private static IConfigurationRoot Configuration { get; set; }
+
+        public void ConfigureServices(IServiceCollection services)
+        {
+            services.AddCors();
+        }
 
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
         {
@@ -25,6 +32,8 @@ namespace jsonmraz
             string root = null;
             dynamic _JSON_ = null;
 
+            app.UseCors(options => options.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+
             app.Use(async (context, next) =>
             {
                 path = context.Request.Path.Value.Split('/');
@@ -34,6 +43,7 @@ namespace jsonmraz
                 await next();
             });
 
+            //this method should be removed
             app.MapWhen(context => context.Request.QueryString.Value.Contains("set"), _app =>
             {
                 _app.Run(async context =>
@@ -55,11 +65,37 @@ namespace jsonmraz
                 });
             });
 
+            app.MapWhen(context => context.Request.Method == HttpMethod.Post.Method, _app =>
+            {
+                _app.Run(async context =>
+                {
+                    Object updatedObject;
+                    using (var sr = new StreamReader(context.Request.Body))
+                        updatedObject = JsonConvert.DeserializeObject<Object>(sr.ReadToEnd());
+
+                    dynamic objectToUpdate = findJsonObject(_JSON_, path, root);
+
+                    var type = _JSON_.SelectToken($"{(objectToUpdate as JObject)?.Path}")[updatedObject.key].Value.GetType();
+
+                    _JSON_.SelectToken($"{(objectToUpdate as JObject)?.Path}")[updatedObject.key] = Convert.ChangeType(updatedObject.value, type);
+
+                    var jsonToWrite = JsonConvert.SerializeObject(_JSON_);
+
+                    await File.WriteAllText($"json/{root}.json", jsonToWrite);
+                });
+            });
+
             app.Run(async context =>
             {
                 var jsonObj = findJsonObject(_JSON_, path, root);
                 await context.Response.WriteAsync($"{JsonConvert.SerializeObject(jsonObj)}");
             });
+        }
+
+        public class Object
+        {
+            public string key { get; set; }
+            public object value { get; set; }
         }
 
         static dynamic findJsonObject(dynamic json, string[] path, string root)
