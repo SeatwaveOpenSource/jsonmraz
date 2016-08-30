@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Linq;
 using System.Net.Http;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -15,8 +14,7 @@ namespace jsonmraz
 {
     public class Startup
     {
-        private static IConfigurationRoot Configuration { get; set; }
-
+        static IConfigurationRoot Configuration { get; set; }
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddCors();
@@ -39,30 +37,13 @@ namespace jsonmraz
                 path = context.Request.Path.Value.Split('/');
                 root = path[1];
                 if (string.IsNullOrWhiteSpace(root) || root.Contains("favicon.ico")) return;
-                _JSON_ = JsonConvert.DeserializeObject(File.ReadAllText($"json/{root}.json"));
+
+                var jsonLocation = Configuration.GetSection("json.location").Value;
+                var actualJsonLocation = !string.IsNullOrWhiteSpace(jsonLocation) ? jsonLocation : "json/"; //ERRGH!
+
+                _JSON_ = JsonConvert.DeserializeObject(File.ReadAllText($"{actualJsonLocation}{root}.json"));
+
                 await next();
-            });
-
-            //this method should be removed
-            app.MapWhen(context => context.Request.QueryString.Value.Contains("set"), _app =>
-            {
-                _app.Run(async context =>
-                {
-                    dynamic _json = findJsonObject(_JSON_, path, root);
-
-                    var propertyName = context.Request.Query.Single(x => x.Key == "key").Value[0];
-                    var propertyValue = context.Request.Query.Single(x => x.Key == "newValue").Value[0];
-
-                    var type = _JSON_.SelectToken($"{(_json as JObject)?.Path}")[propertyName].Value.GetType();
-
-                    _JSON_.SelectToken($"{(_json as JObject)?.Path}")[propertyName] = Convert.ChangeType(propertyValue, type);
-
-                    var jsonOutput = JsonConvert.SerializeObject(_JSON_);
-
-                    File.WriteAllText($"json/{root}.json", jsonOutput);
-
-                    await context.Response.WriteAsync($"{jsonOutput}");
-                });
             });
 
             app.MapWhen(context => context.Request.Method == HttpMethod.Post.Method, _app =>
@@ -73,7 +54,7 @@ namespace jsonmraz
                     using (var sr = new StreamReader(context.Request.Body))
                         updatedObject = JsonConvert.DeserializeObject<Object>(sr.ReadToEnd());
 
-                    dynamic objectToUpdate = findJsonObject(_JSON_, path, root);
+                    dynamic objectToUpdate = FindJsonObject(_JSON_, path, root);
 
                     var type = _JSON_.SelectToken($"{(objectToUpdate as JObject)?.Path}")[updatedObject.key].Value.GetType();
 
@@ -87,7 +68,7 @@ namespace jsonmraz
 
             app.Run(async context =>
             {
-                var jsonObj = findJsonObject(_JSON_, path, root);
+                var jsonObj = FindJsonObject(_JSON_, path, root);
                 await context.Response.WriteAsync($"{JsonConvert.SerializeObject(jsonObj)}");
             });
         }
@@ -98,7 +79,7 @@ namespace jsonmraz
             public object value { get; set; }
         }
 
-        static dynamic findJsonObject(dynamic json, string[] path, string root)
+        static dynamic FindJsonObject(dynamic json, string[] path, string root)
         {
             var _json = json;
             foreach (var pathSection in path)
@@ -117,14 +98,14 @@ namespace jsonmraz
         {
             Configuration = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("config.json", optional: true)
+                .AddJsonFile("setup.json", optional: true)
                 .Build();
 
             new WebHostBuilder()
                 .UseKestrel()
-                .UseConfiguration(Configuration.GetSection("server.urls"))
-                .UseIISIntegration()
                 .UseStartup<Startup>()
+                .UseUrls(Configuration.GetSection("server.urls").Value)
+                .UseIISIntegration()
                 .Build()
                 .Run();
         }
