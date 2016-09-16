@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Net.Http;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -15,6 +16,7 @@ namespace jsonmraz
     public class Startup
     {
         static IConfigurationRoot Configuration { get; set; }
+
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddCors();
@@ -56,13 +58,17 @@ namespace jsonmraz
 
                     dynamic objectToUpdate = FindJsonObject(_JSON_, path, root);
 
-                    var type = _JSON_.SelectToken($"{(objectToUpdate as JObject)?.Path}")[updatedObject.key].Value.GetType();
+                    var type =
+                        _JSON_.SelectToken($"{(objectToUpdate as JObject)?.Path}")[updatedObject.key].Value.GetType();
 
-                    _JSON_.SelectToken($"{(objectToUpdate as JObject)?.Path}")[updatedObject.key] = Convert.ChangeType(updatedObject.value, type);
+                    _JSON_.SelectToken($"{(objectToUpdate as JObject)?.Path}")[updatedObject.key] =
+                        Convert.ChangeType(updatedObject.value, type);
 
                     var jsonToWrite = JsonConvert.SerializeObject(_JSON_);
 
-                    await File.WriteAllText($"json/{root}.json", jsonToWrite);
+                    var jsonLocation = Configuration.GetSection("json.location").Value;
+                    var actualJsonLocation = !string.IsNullOrWhiteSpace(jsonLocation) ? jsonLocation : "json/";
+                    await Task.Run(() => { File.WriteAllText($"{actualJsonLocation}{root}.json", jsonToWrite); });
                 });
             });
 
